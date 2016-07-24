@@ -5,15 +5,15 @@
   var Log = require('log');
   var Dispatcher = require('./dispatcher');
   var log = new Log('debug');
-
   var MsgType = {
     Default: 'message',
     Sess: 'sess_message',
     Group: 'group_message',
     Discuss: 'discu_message'
   };
-
-
+var npm_request = require("request");
+var url = 'http://i.itpk.cn/api.php?question=%E8%A7%82%E9%9F%B3%E7%81%B5%E7%AD%BE&api_key=9374286f2c55b046a65db2885e37c2e5&api_secret=j6aaory4uq6i';
+var urlx = 'http://i.itpk.cn/api.php?question=%E7%AC%91%E8%AF%9D&api_key=9374286f2c55b046a65db2885e37c2e5&api_secret=j6aaory4uq6i';
   /*
    cookie , auth 登录需要参数
    config:  配置信息，将 config.yaml
@@ -37,6 +37,32 @@
       this.dispatcher = new Dispatcher(this.config.plugins, this);
       this.started = true;
     }
+
+ 
+    QQBot.prototype.get_qian = function(gid,username){
+      var me = this;
+      npm_request({
+        url:url,
+        json:true
+      },function(error,response,body){
+          if(!error&&response.statusCode ===200){
+            //console.log("签语: " + body.qianyu+"\n"+"解签: "+body.jieqian);
+            // return me.send_message(uin,"签语: " + body.qianyu+"\n"+"解签: "+body.jieqian,null);
+            return me.send_message_to_group(gid,username+" , 您抽的是"+body.haohua+"\n"+"签语: " + body.qianyu+"\n"+"诗意: "+body.shiyi+"\n"+"解签: "+body.jieqian,null);
+          }
+        });
+    };
+    QQBot.prototype.get_xiaohua = function(gid){
+	var me = this;
+	npm_request({
+        url:urlx,
+        json:true
+      },function(error,response,body){
+          if(!error&&response.statusCode ===200){
+            return me.send_message_to_group(gid,"笑话: "+body.title+"\n\n"+body.content,null);
+          }
+        });	
+};
 
     QQBot.prototype.save_group_member = function(group, info) {
       return this.groupmember_info[group.gid] = info;
@@ -438,6 +464,7 @@
       var uin;
       uin = typeof uin_or_user === 'object' ? uin_or_user.uin : uin_or_user;
       log.info("send msg " + content + " to user" + uin);
+      count = 0;
       return api.send_msg_2buddy(uin, content, this.auth, callback);
     };
 
@@ -579,7 +606,15 @@
         }
         try {
           log.debug("[群组消息]", "[" + msg.from_group.name + "] " + msg.from_user.nick + ":" + msg.content + " " + msg.time);
-        } catch (undefined) {}
+          if (msg.content=="抽签") {
+	  //log.debug(msg.from_user.uin);
+	 // console.log(this.get_group([msg.from_group.gid]));
+          //log.debug('@@@@@@@@@');
+	  this.get_qian(msg.from_group.gid,msg.from_user.nick);}
+          if(msg.content=="笑话"){
+	  this.get_xiaohua(msg.from_group.gid);
+	  }
+	} catch (undefined) {}
       } else if (msg_type === MsgType.Discuss) {
         msg.from_did = value.did;
         msg.from_uin = value.send_uin;
@@ -611,6 +646,9 @@
         }
         try {
           log.debug("[好友消息]", msg.from_user.nick + ":" + msg.content + " " + msg.time);
+          // log.debug(this.get_qian());
+          // this.get_qian(msg.from_uin);
+          
         } catch (undefined) {}
       } else if (msg_type === MsgType.Sess) {
         msg.from_gid = value.id;
@@ -716,3 +754,4 @@
   module.exports = QQBot;
 
 }).call(this);
+
